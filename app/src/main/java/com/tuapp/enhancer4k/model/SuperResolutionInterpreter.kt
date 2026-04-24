@@ -15,29 +15,37 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
-import java.util.zip.ZipInputStream
 
 class SuperResolutionInterpreter(private val context: Context) {
 
     private var interpreter: Interpreter? = null
     private var gpuDelegate: GpuDelegate? = null
 
-    private val inputSize = 128        // Entrada típica para ESRGAN x4 (128x128)
-    private val scaleFactor = 4        // Factor de escala 4x → salida 512x512
+    private val inputSize = 128
+    private val scaleFactor = 4
     private val modelFileName = "real_esrgan_x4plus.tflite"
-    private val modelZipUrl = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/real_esrgan_x4plus/releases/v0.51.0/real_esrgan_x4plus-tflite-float.zip"
+    // Enlace directo al .tflite (sin ZIP)
+    private val modelUrl = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/real_esrgan_x4plus/releases/v0.51.0/real_esrgan_x4plus-tflite-float.tflite"
 
-    /**
-     * Inicializa el intérprete. Si el modelo no existe localmente,
-     * descarga el ZIP, lo extrae y guarda el .tflite.
-     */
     suspend fun initialize() {
         val modelFile = File(context.filesDir, modelFileName)
+
+        // Si el archivo existe pero es muy pequeño (probablemente corrupto), lo borramos
+        if (modelFile.exists() && modelFile.length() < 10_000_000) { // menos de 10 MB es sospechoso
+            modelFile.delete()
+        }
+
         if (!modelFile.exists()) {
             withContext(Dispatchers.IO) {
-                downloadAndExtractModel(modelFile)
+                downloadModel(modelUrl, modelFile)
             }
         }
+
+        // Validación final
+        if (!modelFile.exists() || modelFile.length() < 10_000_000) {
+            throw Exception("El modelo no se descargó correctamente (archivo demasiado pequeño). Verifica tu conexión.")
+        }
+
         val modelBuffer = loadModelFile(modelFile)
         val options = Interpreter.Options()
         if (CompatibilityList().isDelegateSupportedOnThisDevice) {
@@ -47,39 +55,35 @@ class SuperResolutionInterpreter(private val context: Context) {
         interpreter = Interpreter(modelBuffer, options)
     }
 
-    /**
-     * Descarga el ZIP desde modelZipUrl, extrae el primer archivo .tflite
-     * y lo guarda en el archivo de destino.
-     */
-    private fun downloadAndExtractModel(destination: File) {
-        val url = URL(modelZipUrl)
-        val connection = url.openConnection() as HttpURLConnection
-        connection.connectTimeout = 60000
-        connection.readTimeout = 60000
-        connection.requestMethod = "GET"
-        connection.connect()
+    private suspend fun downloadModel(urlString: String, destination: File) {
+        withContext(Dispatchers.IO) {
+            val url = URL(urlString)
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = 30000
+            connection.readTimeout = 120000  // hasta 2 minutos para descargar ~70 MB
+            connection.requestMethod = "GET"
+            connection.connect()
 
-        if (connection.responseCode != HttpURLConnection.HTTP_OK) {
-            throw Exception("Error al descargar el modelo: ${connection.responseCode}")
-        }
-
-        ZipInputStream(connection.inputStream).use { zipStream ->
-            var entry = zipStream.nextEntry
-            while (entry != null) {
-                if (entry.name.endsWith(".tflite")) {
-                    // Encontramos el archivo del modelo
-                    FileOutputStream(destination).use { fos ->
-                        zipStream.copyTo(fos)
-                    }
-                    break
-                }
-                entry = zipStream.nextEntry
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) {
+                throw Exception("Error al descargar el modelo: ${connection.responseCode}")
             }
-        }
-        connection.disconnect()
 
-        if (!destination.exists()) {
-            throw Exception("No se encontró ningún archivo .tflite dentro del ZIP")
+            // Descargamos en un archivo temporal y luego lo renombramos
+            val tempFile = File(destination.parent, "temp_$modelFileName")
+            connection.inputStream.use { input ->
+                FileOutputStream(tempFile).use { output ->
+                    input.copyTo(output)
+                }
+            }
+            connection.disconnect()
+
+            // Solo conservamos el archivo si es suficientemente grande
+            if (tempFile.exists() && tempFile.length() > 10_000_000) {
+                tempFile.renameTo(destination)
+            } else {
+                tempFile.delete()
+                throw Exception("La descarga no se completó (archivo demasiado pequeño). Intenta de nuevo.")
+            }
         }
     }
 
@@ -90,7 +94,7 @@ class SuperResolutionInterpreter(private val context: Context) {
 
     fun upscale(inputBitmap: Bitmap): Bitmap {
         val interpreter = this.interpreter
-            ?: throw IllegalStateException("Intérprete no inicializado. Llama a initialize() primero.")
+            ?: throw IllegalStateException("Intérprete no inicializado.")
         val resizedInput = Bitmap.createScaledBitmap(inputBitmap, inputSize, inputSize, true)
         val inputBuffer = bitmapToFloatBuffer(resizedInput)
         val outputWidth = inputSize * scaleFactor
