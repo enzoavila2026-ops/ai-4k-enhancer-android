@@ -29,9 +29,12 @@ jobs:
           echo "" > settings.gradle.kts
           gradle wrapper --gradle-version 8.4
           cd ..
+          mkdir -p gradle/wrapper
           cp temp_gradle/gradlew .
           cp temp_gradle/gradlew.bat .
-          cp -r temp_gradle/gradle/wrapper gradle/wrapper
+          cp temp_gradle/gradle/wrapper/gradle-wrapper.jar gradle/wrapper/
+          cp temp_gradle/gradle/wrapper/gradle-wrapper.properties gradle/wrapper/
+          chmod +x gradlew
           rm -rf temp_gradle
 
       - name: Build debug APK
