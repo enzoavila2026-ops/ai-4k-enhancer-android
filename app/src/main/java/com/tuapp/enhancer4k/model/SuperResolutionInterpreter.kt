@@ -2,6 +2,7 @@ package com.tuapp.enhancer4k.model
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.os.Environment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.tensorflow.lite.Interpreter
@@ -24,27 +25,32 @@ class SuperResolutionInterpreter(private val context: Context) {
     private val inputSize = 128
     private val scaleFactor = 4
     private val modelFileName = "real_esrgan_x4plus.tflite"
-    
-    // Enlace directo al archivo .tflite del modelo Real-ESRGAN x4plus
-    private val modelUrl = "https://github.com/PINTO0309/PINTO_model_zoo/raw/main/133_Real-ESRGAN/real_esrgan_x4plus.tflite"
+    // URL alternativa por si no tienes el archivo en Descargas
+    private val modelUrl = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/real_esrgan_x4plus/releases/v0.51.0/real_esrgan_x4plus-tflite-float.tflite"
 
     suspend fun initialize() {
         val modelFile = File(context.filesDir, modelFileName)
 
-        // Verificación de integridad: si el archivo existe pero es demasiado pequeño, lo considera corrupto y lo borra.
-        if (modelFile.exists() && modelFile.length() < 10_000_000) {
-            modelFile.delete()
+        // 1. Intentar copiar el modelo desde la carpeta Download (si existe allí)
+        if (!modelFile.exists()) {
+            val publicDownload = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), modelFileName)
+            if (publicDownload.exists() && publicDownload.length() > 10_000_000) {
+                withContext(Dispatchers.IO) {
+                    publicDownload.copyTo(modelFile, overwrite = true)
+                }
+            }
         }
 
+        // 2. Si aún no existe, descargarlo (requiere INTERNET)
         if (!modelFile.exists()) {
             withContext(Dispatchers.IO) {
                 downloadModel(modelUrl, modelFile)
             }
         }
 
-        // Validación final después de la descarga
+        // Validación final
         if (!modelFile.exists() || modelFile.length() < 10_000_000) {
-            throw Exception("Error: La descarga del modelo no se completó correctamente. Verifica tu conexión a internet.")
+            throw Exception("No se pudo obtener el modelo. Verifica que el archivo esté en Download o que tengas conexión a internet.")
         }
 
         val modelBuffer = loadModelFile(modelFile)
@@ -61,7 +67,7 @@ class SuperResolutionInterpreter(private val context: Context) {
             val url = URL(urlString)
             val connection = url.openConnection() as HttpURLConnection
             connection.connectTimeout = 30000
-            connection.readTimeout = 120000 // Timeout de 2 minutos para archivos grandes
+            connection.readTimeout = 120000
             connection.requestMethod = "GET"
             connection.connect()
 
@@ -69,7 +75,6 @@ class SuperResolutionInterpreter(private val context: Context) {
                 throw Exception("Error al descargar el modelo: ${connection.responseCode}")
             }
 
-            // Primero se descarga en un archivo temporal. Si es exitoso, se renombra al final.
             val tempFile = File(destination.parent, "temp_$modelFileName")
             connection.inputStream.use { input ->
                 FileOutputStream(tempFile).use { output ->
@@ -78,7 +83,6 @@ class SuperResolutionInterpreter(private val context: Context) {
             }
             connection.disconnect()
 
-            // Solo conservamos el archivo si tiene un tamaño razonable
             if (tempFile.exists() && tempFile.length() > 10_000_000) {
                 tempFile.renameTo(destination)
             } else {
@@ -95,7 +99,7 @@ class SuperResolutionInterpreter(private val context: Context) {
 
     fun upscale(inputBitmap: Bitmap): Bitmap {
         val interpreter = this.interpreter
-            ?: throw IllegalStateException("Intérprete no inicializado.")
+            ?: throw IllegalStateException("Intérprete no inicializado. Llama a initialize() primero.")
         val resizedInput = Bitmap.createScaledBitmap(inputBitmap, inputSize, inputSize, true)
         val inputBuffer = bitmapToFloatBuffer(resizedInput)
         val outputWidth = inputSize * scaleFactor
