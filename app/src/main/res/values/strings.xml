@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">AI 4K Enhancer</string>
+    <string name="credit_available">✨ %d mejoras disponibles</string>
+    <string name="select_image">Seleccionar imagen</string>
+    <string name="last_enhancement">Última mejora</string>
+    <string name="use_again">Usar</string>
+    <string name="model_fast">Rápido</string>
+    <string name="model_quality">Calidad Pro</string>
+    <string name="model_art">Arte IA</string>
+    <string name="sharpness">Nitidez / Detalle</string>
+    <string name="output_format">Formato de salida</string>
+    <string name="process_button">⚡ Mejorar a 4K</string>
+    <string name="comparison_title">🔍 Comparación antes/después</string>
+    <string name="before">Original</string>
+    <string name="after">IA mejorada</string>
+</resources>
