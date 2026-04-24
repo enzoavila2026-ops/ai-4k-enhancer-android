@@ -24,14 +24,15 @@ class SuperResolutionInterpreter(private val context: Context) {
     private val inputSize = 128
     private val scaleFactor = 4
     private val modelFileName = "real_esrgan_x4plus.tflite"
-    // Enlace directo al .tflite (sin ZIP)
-    private val modelUrl = "https://qaihub-public-assets.s3.us-west-2.amazonaws.com/qai-hub-models/models/real_esrgan_x4plus/releases/v0.51.0/real_esrgan_x4plus-tflite-float.tflite"
+    
+    // Enlace directo al archivo .tflite del modelo Real-ESRGAN x4plus
+    private val modelUrl = "https://github.com/PINTO0309/PINTO_model_zoo/raw/main/133_Real-ESRGAN/real_esrgan_x4plus.tflite"
 
     suspend fun initialize() {
         val modelFile = File(context.filesDir, modelFileName)
 
-        // Si el archivo existe pero es muy pequeño (probablemente corrupto), lo borramos
-        if (modelFile.exists() && modelFile.length() < 10_000_000) { // menos de 10 MB es sospechoso
+        // Verificación de integridad: si el archivo existe pero es demasiado pequeño, lo considera corrupto y lo borra.
+        if (modelFile.exists() && modelFile.length() < 10_000_000) {
             modelFile.delete()
         }
 
@@ -41,9 +42,9 @@ class SuperResolutionInterpreter(private val context: Context) {
             }
         }
 
-        // Validación final
+        // Validación final después de la descarga
         if (!modelFile.exists() || modelFile.length() < 10_000_000) {
-            throw Exception("El modelo no se descargó correctamente (archivo demasiado pequeño). Verifica tu conexión.")
+            throw Exception("Error: La descarga del modelo no se completó correctamente. Verifica tu conexión a internet.")
         }
 
         val modelBuffer = loadModelFile(modelFile)
@@ -60,7 +61,7 @@ class SuperResolutionInterpreter(private val context: Context) {
             val url = URL(urlString)
             val connection = url.openConnection() as HttpURLConnection
             connection.connectTimeout = 30000
-            connection.readTimeout = 120000  // hasta 2 minutos para descargar ~70 MB
+            connection.readTimeout = 120000 // Timeout de 2 minutos para archivos grandes
             connection.requestMethod = "GET"
             connection.connect()
 
@@ -68,7 +69,7 @@ class SuperResolutionInterpreter(private val context: Context) {
                 throw Exception("Error al descargar el modelo: ${connection.responseCode}")
             }
 
-            // Descargamos en un archivo temporal y luego lo renombramos
+            // Primero se descarga en un archivo temporal. Si es exitoso, se renombra al final.
             val tempFile = File(destination.parent, "temp_$modelFileName")
             connection.inputStream.use { input ->
                 FileOutputStream(tempFile).use { output ->
@@ -77,7 +78,7 @@ class SuperResolutionInterpreter(private val context: Context) {
             }
             connection.disconnect()
 
-            // Solo conservamos el archivo si es suficientemente grande
+            // Solo conservamos el archivo si tiene un tamaño razonable
             if (tempFile.exists() && tempFile.length() > 10_000_000) {
                 tempFile.renameTo(destination)
             } else {
