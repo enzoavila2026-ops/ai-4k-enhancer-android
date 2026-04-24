@@ -20,8 +20,8 @@ class SuperResolutionInterpreter(private val context: Context) {
     private var nnApiDelegate: NnApiDelegate? = null
 
     // Ajusta estos valores según el modelo TFLite que uses
-    private val inputSize = 512    // Entrada 512x512
-    private val scaleFactor = 4    // Escala x4 → salida 2048x2048
+    private val inputSize = 128    // Entrada 128x128
+    private val scaleFactor = 4    // Escala x4 → salida 512x512
 
     /**
      * Inicializa el intérprete TFLite con aceleración por hardware.
