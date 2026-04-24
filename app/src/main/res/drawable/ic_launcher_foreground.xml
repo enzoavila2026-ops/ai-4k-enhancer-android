@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Ícono estilizado de montaña/pico (representa escala y mejora) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M34,72 L54,42 L64,56 L74,46 L84,72 Z" />
+    <path
+        android:fillColor="#B0C8FF"
+        android:pathData="M44,72 L54,52 L64,72 Z" />
+    <!-- Brillo 4K simbólico -->
+    <path
+        android:fillColor="#3F80FF"
+        android:pathData="M54,38 L56,32 M54,38 L48,34 M54,38 L60,34"
+        android:strokeWidth="2"
+        android:strokeColor="#3F80FF" />
+    <!-- Letras "4K" pequeñas (opcional) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M48,58 L52,58 L50,62 Z M54,58 L58,58 L56,64 M55,61 L59,61" />
+</vector>
