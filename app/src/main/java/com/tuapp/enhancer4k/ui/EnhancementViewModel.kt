@@ -28,21 +28,16 @@ class EnhancementViewModel(application: Application) : AndroidViewModel(applicat
     private var interpreter: SuperResolutionInterpreter? = null
 
     init {
-        // Inicializar el intérprete en segundo plano
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                interpreter = SuperResolutionInterpreter(application).apply {
-                    initialize(useGPU = true)  // o false si queremos forzar CPU
-                }
+                interpreter = SuperResolutionInterpreter(application)
+                interpreter?.initialize()   // descarga automática del modelo
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "Error al cargar modelo: ${e.message}") }
             }
         }
     }
 
-    /**
-     * Selecciona una imagen sin procesar.
-     */
     fun selectImage(bitmap: Bitmap) {
         _uiState.update {
             it.copy(
@@ -53,9 +48,6 @@ class EnhancementViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    /**
-     * Ejecuta el escalado a 4K sobre la imagen actual.
-     */
     fun enhanceImage() {
         val bitmap = _uiState.value.originalBitmap ?: return
 
