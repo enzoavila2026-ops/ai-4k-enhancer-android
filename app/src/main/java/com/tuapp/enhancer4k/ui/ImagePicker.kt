@@ -11,9 +11,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 
 @Composable
-fun ImagePicker(onImageSelected: (Bitmap) -> Unit) {
+fun ImagePickerDialog(
+    show: Boolean,
+    onDismiss: () -> Unit,
+    onImageSelected: (Bitmap) -> Unit
+) {
     val context = LocalContext.current
-    var showDialog by remember { mutableStateOf(false) }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -32,18 +35,14 @@ fun ImagePicker(onImageSelected: (Bitmap) -> Unit) {
         bitmap?.let { onImageSelected(it) }
     }
 
-    Button(onClick = { showDialog = true }) {
-        Text("Seleccionar imagen")
-    }
-
-    if (showDialog) {
+    if (show) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = onDismiss,
             title = { Text("Seleccionar fuente") },
             text = { Text("Elige una imagen de tu galería o toma una foto.") },
             confirmButton = {
                 TextButton(onClick = {
-                    showDialog = false
+                    onDismiss()
                     galleryLauncher.launch("image/*")
                 }) {
                     Text("Galería")
@@ -51,7 +50,7 @@ fun ImagePicker(onImageSelected: (Bitmap) -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = {
-                    showDialog = false
+                    onDismiss()
                     cameraLauncher.launch(null)
                 }) {
                     Text("Cámara")
