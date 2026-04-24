@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.AI4KEnhancer" parent="android:Theme.Material.NoActionBar">
+        <!-- Color de fondo principal -->
+        <item name="android:colorBackground">#0f1219</item>
+        <!-- Color de superficie (tarjetas, diálogos) -->
+        <item name="android:colorBackgroundFloating">#1a1f2c</item>
+        <!-- Color primario (acento) -->
+        <item name="android:colorAccent">#2060cf</item>
+        <!-- Color de texto primario -->
+        <item name="android:textColorPrimary">#ffffff</item>
+        <!-- Color de texto secundario -->
+        <item name="android:textColorSecondary">#b0c8ff</item>
+        <!-- Barra de estado oscura con íconos claros -->
+        <item name="android:statusBarColor">#0b0e14</item>
+        <item name="android:navigationBarColor">#0b0e14</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
