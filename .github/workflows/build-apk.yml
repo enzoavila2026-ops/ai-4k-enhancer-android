@@ -22,8 +22,20 @@ jobs:
         with:
           gradle-version: 8.4
 
+      - name: Generate Gradle Wrapper
+        run: |
+          mkdir -p temp_gradle
+          cd temp_gradle
+          echo "" > settings.gradle.kts
+          gradle wrapper --gradle-version 8.4
+          cd ..
+          cp temp_gradle/gradlew .
+          cp temp_gradle/gradlew.bat .
+          cp -r temp_gradle/gradle/wrapper gradle/wrapper
+          rm -rf temp_gradle
+
       - name: Build debug APK
-        run: gradle assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
