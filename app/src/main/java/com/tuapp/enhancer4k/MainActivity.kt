@@ -1,5 +1,6 @@
 package com.tuapp.enhancer4k
 
+import android.graphics.Bitmap
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -16,10 +17,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.tuapp.enhancer4k.ui.EnhancementViewModel
+import com.tuapp.enhancer4k.ui.ImagePickerDialog
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,7 +75,22 @@ fun AI4KEnhancerTheme(content: @Composable () -> Unit) {
 // --- Pantalla principal ---
 @Composable
 fun MainScreen() {
+    val viewModel: EnhancementViewModel = viewModel()
+    val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
+    var showPicker by remember { mutableStateOf(false) }
+
+    // Diálogo de selección de imagen
+    if (showPicker) {
+        ImagePickerDialog(
+            show = showPicker,
+            onDismiss = { showPicker = false },
+            onImageSelected = { bitmap ->
+                viewModel.selectImage(bitmap)
+                showPicker = false
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -77,39 +101,52 @@ fun MainScreen() {
     ) {
         Spacer(modifier = Modifier.height(12.dp))
         
-        // Barra de estado simulada
         StatusBar()
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Header
         AppHeader()
         Spacer(modifier = Modifier.height(4.dp))
         
-        // Créditos
         CreditBadge(available = 12)
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Vista previa
-        ImagePreview()
+        // Vista previa de imagen
+        ImagePreview(
+            bitmap = uiState.originalBitmap,
+            onSelectImage = { showPicker = true }
+        )
         Spacer(modifier = Modifier.height(14.dp))
         
-        // Última mejora
+        // Última mejora (placeholder)
         RecentEnhancement()
         Spacer(modifier = Modifier.height(20.dp))
         
-        // Panel de controles
-        ControlsPanel()
+        // Panel de controles (modelo, nitidez, formato, botón procesar)
+        ControlsPanel(
+            isProcessing = uiState.isProcessing,
+            progress = uiState.progress,
+            hasImage = uiState.originalBitmap != null,
+            error = uiState.error,
+            onProcess = { viewModel.enhanceImage() }
+        )
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Comparación mock
-        ComparisonMock()
-        Spacer(modifier = Modifier.height(16.dp))
+        // Comparación si hay resultado
+        if (uiState.enhancedBitmap != null) {
+            ComparisonSection(
+                original = uiState.originalBitmap,
+                enhanced = uiState.enhancedBitmap
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        } else {
+            ComparisonMock()
+            Spacer(modifier = Modifier.height(16.dp))
+        }
         
         // Navegación inferior
         BottomNavBar()
         Spacer(modifier = Modifier.height(8.dp))
         
-        // Pie
         FootNote()
         Spacer(modifier = Modifier.height(16.dp))
     }
@@ -141,8 +178,7 @@ fun AppHeader() {
                 brush = Brush.linearGradient(
                     colors = listOf(Color(0xFFC0E0FF), Color(0xFFA0C8FF))
                 )
-            ),
-            color = Color(0xFFC0E0FF) // fallback
+            )
         )
         Box(
             modifier = Modifier
@@ -176,7 +212,7 @@ fun CreditBadge(available: Int) {
 }
 
 @Composable
-fun ImagePreview() {
+fun ImagePreview(bitmap: Bitmap?, onSelectImage: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -199,22 +235,53 @@ fun ImagePreview() {
                 .border(1.dp, BorderSubtle, RoundedCornerShape(24.dp)),
             contentAlignment = Alignment.Center
         ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("🖼️", fontSize = 52.sp)
-                Spacer(modifier = Modifier.height(8.dp))
+            if (bitmap != null) {
+                // Imagen real seleccionada
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(bitmap)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Imagen seleccionada",
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                // Overlay de resolución
                 Box(
                     modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(16.dp)
                         .clip(RoundedCornerShape(60))
                         .background(Color.Black.copy(alpha = 0.5f))
                         .border(1.dp, BorderActive, RoundedCornerShape(60))
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        "1920×1080  →  3840×2160 (4K)",
+                        "${bitmap.width}×${bitmap.height}  →  ${bitmap.width * 4}×${bitmap.height * 4} (4K)",
                         color = TextSecondary,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Medium
                     )
+                }
+            } else {
+                // Placeholder
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("🖼️", fontSize = 52.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Toca para seleccionar imagen",
+                        color = TextTertiary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = onSelectImage,
+                        shape = RoundedCornerShape(30),
+                        colors = ButtonDefaults.buttonColors(containerColor = AccentPrimary)
+                    ) {
+                        Text("Seleccionar", fontSize = 14.sp)
+                    }
                 }
             }
         }
@@ -260,7 +327,13 @@ fun RecentEnhancement() {
 }
 
 @Composable
-fun ControlsPanel() {
+fun ControlsPanel(
+    isProcessing: Boolean,
+    progress: Float,
+    hasImage: Boolean,
+    error: String?,
+    onProcess: () -> Unit
+) {
     var selectedModel by remember { mutableIntStateOf(0) }
     var sharpness by remember { mutableFloatStateOf(0.7f) }
     var selectedFormat by remember { mutableIntStateOf(0) }
@@ -356,7 +429,7 @@ fun ControlsPanel() {
                     Box(
                         modifier = Modifier
                             .align(Alignment.CenterStart)
-                            .offset(x = (sharpness * 300).dp) // Simulado
+                            .offset(x = (sharpness * 300).dp)
                             .size(22.dp)
                             .clip(RoundedCornerShape(30))
                             .background(Color.White)
@@ -394,27 +467,165 @@ fun ControlsPanel() {
 
             Spacer(modifier = Modifier.height(28.dp))
 
-            // Botón Procesar
-            Button(
-                onClick = { /* TODO: procesar */ },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(60.dp),
-                shape = RoundedCornerShape(60),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AccentPrimary,
-                    contentColor = Color.White
-                ),
-                elevation = ButtonDefaults.buttonElevation(
-                    defaultElevation = 8.dp,
-                    pressedElevation = 12.dp
-                )
-            ) {
+            // Indicador de error
+            if (error != null) {
                 Text(
-                    "⚡ Mejorar a 4K",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold
+                    text = "❌ $error",
+                    color = Color(0xFFFF6B6B),
+                    fontSize = 13.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
                 )
+            }
+
+            // Botón Procesar o Indicador de progreso
+            if (isProcessing) {
+                // Indicador de progreso
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        progress = { progress },
+                        modifier = Modifier.size(48.dp),
+                        color = AccentPrimary,
+                        trackColor = ProgressTrack,
+                        strokeWidth = 4.dp,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Procesando... ${(progress * 100).toInt()}%",
+                        color = TextSecondary,
+                        fontSize = 14.sp
+                    )
+                }
+            } else {
+                // Botón de acción
+                Button(
+                    onClick = onProcess,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(60.dp),
+                    shape = RoundedCornerShape(60),
+                    enabled = hasImage,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = AccentPrimary,
+                        disabledContainerColor = AccentPrimary.copy(alpha = 0.4f)
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(
+                        defaultElevation = 8.dp,
+                        pressedElevation = 12.dp
+                    )
+                ) {
+                    Text(
+                        "⚡ Mejorar a 4K",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ComparisonSection(original: Bitmap?, enhanced: Bitmap?) {
+    if (original == null || enhanced == null) return
+    Text(
+        "🔍 Comparación antes/después",
+        color = Color(0xFFAAC2FF),
+        fontSize = 16.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(bottom = 16.dp)
+    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(Color(0xFF101622))
+            .border(1.dp, BorderSubtle, RoundedCornerShape(28.dp))
+            .padding(10.dp)
+    ) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Original
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF0D1322))
+                        .border(1.dp, Color(0xFF2B3F60), RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(original)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Original",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+                // Mejorada
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .aspectRatio(1f)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xFF152033))
+                        .border(1.dp, Color(0xFF5E7DB0), RoundedCornerShape(20.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(enhanced)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = "Mejorada 4K",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .height(2.dp)
+                        .weight(1f)
+                        .background(Color(0xFF4766A0))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(RoundedCornerShape(30))
+                        .background(Color(0xFF2A3A58))
+                        .border(1.dp, Color(0xFF7E9AD9), RoundedCornerShape(30)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("⇆", fontSize = 22.sp, color = Color(0xFFD6E5FF))
+                }
+                Box(
+                    modifier = Modifier
+                        .height(2.dp)
+                        .weight(1f)
+                        .background(Color(0xFF4766A0))
+                )
+            }
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text("Original", color = Color(0xFF8CA1CC), fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Text("IA mejorada", color = Color(0xFF8CA1CC), fontSize = 13.sp, fontWeight = FontWeight.Medium)
             }
         }
     }
