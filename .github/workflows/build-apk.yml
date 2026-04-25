@@ -38,9 +38,10 @@ jobs:
           rm -rf temp_gradle
 
       - name: Download TFLite model
-  run: |
-    mkdir -p app/src/main/assets
-    wget -O app/src/main/assets/Real-ESRGAN-x4plus.tflite "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/18bcccf15d8f0b6b20c8fb2d7cd4056b14fc9ebc/Real-ESRGAN-x4plus.tflite"
+        run: |
+          mkdir -p app/src/main/assets
+          wget -O app/src/main/assets/Real-ESRGAN-x4plus.tflite "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/18bcccf15d8f0b6b20c8fb2d7cd4056b14fc9ebc/Real-ESRGAN-x4plus.tflite"
+
       - name: Build debug APK
         run: ./gradlew assembleDebug -Pandroid.useAndroidX=true
 
