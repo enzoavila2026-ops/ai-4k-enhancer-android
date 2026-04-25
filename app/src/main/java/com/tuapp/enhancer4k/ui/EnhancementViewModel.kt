@@ -28,11 +28,14 @@ class EnhancementViewModel(application: Application) : AndroidViewModel(applicat
     private var interpreter: SuperResolutionInterpreter? = null
 
     init {
-        try {
-            interpreter = SuperResolutionInterpreter(application)
-            interpreter?.initialize()   // carga desde assets (sin descarga)
-        } catch (e: Exception) {
-            _uiState.update { it.copy(error = "Error al cargar modelo: ${e.message}") }
+        // Cargar el modelo en segundo plano para no bloquear la interfaz
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                interpreter = SuperResolutionInterpreter(application)
+                interpreter?.initialize() // carga desde assets (operación de I/O)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "Error al cargar modelo: ${e.message}") }
+            }
         }
     }
 
