@@ -20,7 +20,7 @@ class SuperResolutionInterpreter(private val context: Context) {
     private val scaleFactor = 4
 
     fun initialize() {
-        val modelBuffer = loadModelFromAssets("Real-ESRGAN-x4plus.tflite")
+        val modelFile = context.assets.openFd("Real-ESRGAN-x4plus.tflite")
         val options = Interpreter.Options()
         if (CompatibilityList().isDelegateSupportedOnThisDevice) {
             gpuDelegate = GpuDelegate()
