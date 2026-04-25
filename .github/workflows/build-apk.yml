@@ -1,4 +1,5 @@
 name: Build APK
+
 on:
   push:
     branches: [main]
@@ -36,8 +37,13 @@ jobs:
           chmod +x gradlew
           rm -rf temp_gradle
 
+      - name: Download TFLite model into assets
+        run: |
+          mkdir -p app/src/main/assets
+          curl -L -o app/src/main/assets/Real-ESRGAN-x4plus.tflite "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/18bcccf15d8f0b6b20c8fb2d7cd4056b14fc9ebc/Real-ESRGAN-x4plus.tflite"
+
       - name: Build debug APK
-        run: ./gradlew assembleDebug --stacktrace --info -Pandroid.useAndroidX=true
+        run: ./gradlew assembleDebug -Pandroid.useAndroidX=true
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
