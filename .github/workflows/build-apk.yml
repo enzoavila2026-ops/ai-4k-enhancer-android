@@ -40,7 +40,7 @@ jobs:
       - name: Download TFLite model
         run: |
           mkdir -p app/src/main/assets
-          wget -O app/src/main/assets/real_esrgan_x4plus.tflite "https://raw.githubusercontent.com/PINTO0309/PINTO_model_zoo/main/133_Real-ESRGAN/real_esrgan_x4plus.tflite"
+          wget -O app/src/main/assets/real_esrgan_x4plus.tflite "https://huggingface.co/qualcomm/Real-ESRGAN-x4plus/resolve/main/real_esrgan_x4plus.tflite"
 
       - name: Build debug APK
         run: ./gradlew assembleDebug -Pandroid.useAndroidX=true
